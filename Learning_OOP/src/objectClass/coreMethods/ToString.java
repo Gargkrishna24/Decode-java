@@ -1,5 +1,7 @@
 package objectClass.coreMethods;
 
+import objectClass.student;
+
 //Provides a String Representation: Returns a human-readable text version of an object's current state and data.
 //
 //Universal Availability: Exists on every single Java object because it is automatically inherited from the root Object class.
@@ -15,19 +17,10 @@ package objectClass.coreMethods;
 //Simplifies Debugging: Makes log files and console output instantly readable by displaying actual variable values instead of cryptic memory locations.
 public class ToString {
     static void main(String[] args) {
-         Student s = new Student();
+         student.Student s = new student.Student();
          s.name = "Krishna garg";
          s.rollNumber= 221500;
         System.out.println(s.toString());
     }
 }
 
-class Student{
-    String name;
-    int rollNumber;
-
-    @Override
-    public String toString(){
-        return (this.name + " , " + this.rollNumber);
-    }
-}

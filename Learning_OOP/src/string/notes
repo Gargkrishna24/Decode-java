@@ -1,0 +1,190 @@
+# Java `String` Class — Internal Implementation Notes
+
+## Part 1: Interview-Level Concepts (High ROI — must know)
+
+### 1. Immutability
+- Once created, a `String` object's value can **never change**.
+- Any "modification" (concatenation, replace, substring, etc.) creates a **new object**; the original stays unchanged.
+
+```java
+String s = "hello";
+s.concat(" world");   // creates new object, s still points to "hello"
+System.out.println(s); // "hello"
+```
+
+**Why immutable?**
+- Security — used in class loading, file paths, network connections.
+- Thread-safety — no synchronization needed since state can't change.
+- Safe as `HashMap`/`HashSet` keys — hashcode never changes after creation.
+- Enables the String Constant Pool (sharing/reuse of objects).
+
+---
+
+### 2. String Constant Pool (SCP)
+- Special memory area (part of heap since Java 7+) that stores string literals.
+- `String s1 = "hello"` → Java checks pool first; reuses existing object if `"hello"` already exists.
+- `new String("hello")` → **bypasses the pool**, always creates a new object on heap.
+
+```java
+String s1 = "hello";
+String s2 = "hello";
+System.out.println(s1 == s2); // true — same pooled object
+
+String s3 = new String("hello");
+System.out.println(s1 == s3); // false — different objects
+```
+
+---
+
+### 3. `intern()` Method
+- Forces a string into (or fetches it from) the pool.
+
+```java
+String s3 = new String("hello").intern();
+System.out.println(s1 == s3); // true now
+```
+
+---
+
+### 4. `==` vs `equals()`
+| Aspect | `==` | `equals()` |
+|---|---|---|
+| Type | Operator | Method |
+| Primitives | Compares actual value | N/A |
+| Objects (default) | Compares reference/memory address | Same as `==` unless overridden |
+| Objects (overridden, e.g. String) | Still compares reference | Compares actual content |
+| Can be overridden? | No | Yes |
+
+```java
+String s1 = "hello";
+String s2 = "hello";
+s1 == s2;        // true (pool)
+s1.equals(s2);   // true (content match)
+
+String s3 = new String("hello");
+s1 == s3;        // false (different object)
+s1.equals(s3);   // true (content match)
+```
+
+---
+
+### 5. String vs StringBuilder vs StringBuffer
+| | String | StringBuilder | StringBuffer |
+|---|---|---|---|
+| Mutable? | No | Yes | Yes |
+| Thread-safe? | Yes (immutable) | No | Yes (synchronized) |
+| Performance | Slow for loops (`+`) | Fast | Slower than StringBuilder |
+
+**Why not concatenate `String` in a loop with `+`?**
+Each `+` creates a new object → memory overhead. `StringBuilder` uses an internal mutable array instead.
+
+---
+
+### 6. Memory location
+- `String` objects (pooled or not) → live on the **heap**.
+- Reference variable (e.g. `s1`) → lives on the **stack** if it's a local variable.
+
+---
+
+### Common Interview Questions
+- How many objects are created in `String s = new String("abc")`? → **2** (one in pool if not already present, one on heap via `new`)
+- Why is `String` immutable?
+- What is the String pool, and how does `intern()` work?
+- Difference between `==` and `.equals()` for Strings?
+- Why use `StringBuilder` over `String` for heavy concatenation?
+
+---
+
+## Part 2: Real Internal Implementation (Bonus — not typically asked, but good to know)
+
+### 1. Underlying Storage
+
+**Before Java 9:**
+```java
+public final class String {
+    private final char[] value;   // UTF-16 char array
+    private int hash;              // cached hashcode
+}
+```
+
+**Java 9+ — Compact Strings (JEP 254):**
+```java
+public final class String {
+    private final byte[] value;   // byte array instead of char array
+    private final byte coder;      // LATIN1 or UTF16
+    private int hash;
+}
+```
+
+**Why the change?**
+Most strings only contain Latin-1 (basic English) characters, needing just **1 byte/char** instead of **2 bytes/char** (UTF-16 default). Java now:
+- Uses `byte[]` with 1 byte/char if pure Latin-1 (`coder = LATIN1`)
+- Falls back to 2 bytes/char (UTF-16) only if non-Latin1 characters exist (`coder = UTF16`)
+
+Result: ~10–15% heap reduction in typical Java applications after this change.
+
+---
+
+### 2. Why `final` Everywhere
+```java
+public final class String implements ... {
+    private final byte[] value;
+```
+- `final class` → prevents subclassing (protects immutability guarantees)
+- `final` array reference → reference can't be reassigned (contents also protected since it's `private`)
+
+---
+
+### 3. Cached Hashcode (Lazy Computation)
+```java
+private int hash; // default 0
+
+public int hashCode() {
+    int h = hash;
+    if (h == 0 && value.length > 0) {
+        h = computeHashCode();
+        hash = h;
+    }
+    return h;
+}
+```
+- Computed **once**, cached forever (safe since immutable).
+- Subsequent `.hashCode()` calls are instant — classic memoization.
+
+**Hash formula:**
+```
+s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]
+```
+**Why 31?**
+- Odd prime → reduces hash collisions, avoids overflow bit-loss patterns.
+- Small enough that JVM/JIT can optimize `31 * i` as `(i << 5) - i` (bit-shift, faster than multiplication).
+
+---
+
+### 4. `intern()` Is a Native Method
+```java
+public native String intern();
+```
+- Implemented in the JVM's native code (HotSpot's `StringTable` class in C++), not pure Java.
+- The pool itself is a native hash table managed by the JVM.
+
+---
+
+### 5. `substring()` — Historical Gotcha (Pre-Java 7)
+- Old versions shared the same underlying `char[]` as the original string (tracked via offset + count).
+- Caused memory leaks if a small substring of a huge string was kept alive (whole original array stayed in memory).
+- **Fixed in Java 7** — `substring()` now always creates a **new copy** of the array (safer, slightly more memory per call).
+
+---
+
+## Summary — What to Actually Focus On
+
+| For Interviews | For Deep Understanding (Bonus) |
+|---|---|
+| Immutability & why | Compact Strings (byte[] + coder flag) |
+| String Pool + `intern()` | `final` class/array reasoning |
+| `==` vs `equals()` | Cached hashcode + formula (31) |
+| String vs StringBuilder vs StringBuffer | Native `intern()` implementation |
+| Memory: heap vs stack | `substring()` pre/post Java 7 behavior |
+
+**Rule of thumb:** Master the left column cold — it's asked constantly. Know the right column exists and can speak to it briefly if it comes up; it shows depth but isn't expected knowledge.

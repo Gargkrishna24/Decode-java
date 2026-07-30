@@ -1,9 +1,11 @@
 package objectClass;
 
+import objectClass.coreMethods.Clone;
+
 import java.util.Objects;
 
 public class student {
-    public static class Student{
+    public static class Student implements Cloneable {
         public String name;
         public int rollNumber;
 
@@ -37,5 +39,11 @@ public class student {
 
             return Objects.hash(name, rollNumber);
         }
+
+        @Override
+        public Object clone() throws CloneNotSupportedException{
+            return super.clone();
+        }
     }
+
 }

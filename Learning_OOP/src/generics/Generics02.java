@@ -28,8 +28,12 @@ class Demo <T,U>{
 //        // method body
 //    }
 
-    public  <T> T getArgument(T args){
+    public  <E> E getArgument(E args){
         return args;
+    }
+
+    public <X,Y> void getSum(X x , Y y){
+        System.out.println(x+" "  + y);
     }
 
 }
@@ -39,6 +43,7 @@ public class Generics02 {
         System.out.println(demo.getFirst());
         System.out.println(demo.getSecond());
 
-        demo.getArgument(12.09f);
+        System.out.println(demo.getArgument(12.09f));
+        demo.getSum(10,"Krishna garg");
     }
 }

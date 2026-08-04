@@ -30,7 +30,10 @@ class Student implements Comparable<Student>{
 
     @Override
     public int compareTo(Student other) {
-        return this.marks - other.marks;
+        if(this.marks != other.marks){
+            return this.marks - other.marks;
+        }
+        return this.name.compareTo(other.name);
     }
 }
 public class Basics {
@@ -39,6 +42,7 @@ public class Basics {
         l.add(new Student("Krishna garg",99));
         l.add(new Student("Mukund Bansal",18));
         l.add(new Student("Nikhil Gupta",-23));
+        l.add(new Student("Akhilesh ",-23));
         Collections.sort(l);
         for(Student s : l){
             System.out.println(s.name+" " + s.marks);
